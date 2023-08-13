@@ -14,17 +14,16 @@ plugins:
     type: cache
     args:
       size: 2048
-      lazy_cache_ttl: 86400
+      lazy_cache_ttl: 43200
 
   - args:
+      concurrent: 2
       upstreams:
           - addr: https://dns.alidns.com/dns-query
             enable_http3: true
-            max_conns: 1
             dial_addr: 2400:3200::1
           - addr: https://dns.alidns.com/dns-query
             enable_http3: true
-            max_conns: 1
             dial_addr: 2400:3200:baba::1
     tag: fast_forward
     type: forward
