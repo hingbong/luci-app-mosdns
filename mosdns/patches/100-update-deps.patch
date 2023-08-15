@@ -409,6 +409,31 @@ index 960ad98..e8f36d8 100644
  gopkg.in/errgo.v2 v2.1.0/go.mod h1:hNsd1EY+bozCKY1Ytp96fpM3vjJbqLJn88ws8XvfDNI=
  gopkg.in/ini.v1 v1.67.0 h1:Dgnx+6+nfE+IfzjUEISNeydPJh9AXNNsWbGP9KzCsOA=
  gopkg.in/ini.v1 v1.67.0/go.mod h1:pNLf8WUiyNEtQjuu5G5vTm06TEv9tsIgeAvK8hOrP4k=
+diff --git a/mlog/logger.go b/mlog/logger.go
+index 861f091..adb4fc3 100644
+--- a/mlog/logger.go
++++ b/mlog/logger.go
+@@ -39,9 +39,9 @@ type LogConfig struct {
+ }
+ 
+ var (
+-	stderr = zapcore.Lock(os.Stderr)
++	stdout = zapcore.Lock(os.Stdout)
+ 	lvl    = zap.NewAtomicLevelAt(zap.InfoLevel)
+-	l      = zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()), stderr, lvl))
++	l      = zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()), stdout, lvl))
+ 	s      = l.Sugar()
+ 
+ 	nop = zap.NewNop()
+@@ -61,7 +61,7 @@ func NewLogger(lc LogConfig) (*zap.Logger, error) {
+ 		}
+ 		out = zapcore.Lock(f)
+ 	} else {
+-		out = stderr
++		out = stdout
+ 	}
+ 
+ 	if lc.Production {
 diff --git a/pkg/server/http_handler/handler.go b/pkg/server/http_handler/handler.go
 index 3e800f9..25f52e1 100644
 --- a/pkg/server/http_handler/handler.go
@@ -422,39 +447,25 @@ index 3e800f9..25f52e1 100644
  	}
  
 diff --git a/pkg/upstream/upstream.go b/pkg/upstream/upstream.go
-index d0fdc74..22575a1 100644
+index d0fdc74..950da13 100644
 --- a/pkg/upstream/upstream.go
 +++ b/pkg/upstream/upstream.go
-@@ -225,6 +225,10 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
- 		}
- 
- 		dialAddr := getDialAddrWithPort(addrURL.Host, opt.DialAddr, 443)
-+		tlsConfig := opt.TLSConfig.Clone()
-+		if len(tlsConfig.ServerName) == 0 {
-+			tlsConfig.ServerName = tryRemovePort(addrURL.Host)
-+		}
- 		var t http.RoundTripper
- 		var addonCloser io.Closer // udpConn
- 		if opt.EnableHTTP3 {
-@@ -233,9 +237,10 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
+@@ -233,7 +233,8 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
  			if err != nil {
  				return nil, fmt.Errorf("failed to init udp socket for quic")
  			}
 -			addonCloser = conn
-+			qTransport := &quic.Transport{Conn: conn}
-+			addonCloser = qTransport
++			qt := &quic.Transport{Conn: conn}
++			addonCloser = qt
  			t = &http3.RoundTripper{
--				TLSClientConfig: opt.TLSConfig,
-+				TLSClientConfig: tlsConfig,
+ 				TLSClientConfig: opt.TLSConfig,
  				QuicConfig: &quic.Config{
- 					TokenStore:                     quic.NewLRUTokenStore(4, 8),
- 					InitialStreamReceiveWindow:     4 * 1024,
-@@ -248,7 +253,7 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
+@@ -248,7 +249,7 @@ func NewUpstream(addr string, opt Opt) (Upstream, error) {
  					if err != nil {
  						return nil, err
  					}
 -					return quic.DialEarlyContext(ctx, conn, ua, addrURL.Host, tlsCfg, cfg)
-+					return qTransport.DialEarly(ctx, ua, tlsCfg, cfg)
++					return qt.DialEarly(ctx, ua, tlsCfg, cfg)
  				},
  			}
  		} else {

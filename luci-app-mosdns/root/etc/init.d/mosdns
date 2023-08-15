@@ -152,7 +152,6 @@ start_service() {
     config_load "mosdns"
     config_foreach get_config "mosdns"
     [ $enabled -ne 1 ] && return 1
-    delcron ; setcron
     [ "${CONF}" = "/etc/mosdns/config.yaml" ] && init_yaml
     :> $($MOSDNS_SCRIPT logfile)
     procd_open_instance mosdns
@@ -165,12 +164,6 @@ start_service() {
     [ "$redirect" -ne 1 ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
     [ "$redirect" -eq 1 ] && redirect_setting
     reload_dnsmasq
-    update_list=0
-    [ "$adblock" -eq 1 ] && [ "$ad_source" != "geosite.dat" ] && {
-        [ -s "/etc/mosdns/rule/adlist.txt" ] && [ -f "/etc/mosdns/rule/.ad_source" ] && url_adlist=$(cat /etc/mosdns/rule/.ad_source) || update_list=1
-        [ "$ad_source" != "$url_adlist" ] && update_list=1
-    }
-    [ "$update_list" -eq 1 ] && $MOSDNS_SCRIPT adlist_update &> /dev/null &
 }
 
 stop_service() {

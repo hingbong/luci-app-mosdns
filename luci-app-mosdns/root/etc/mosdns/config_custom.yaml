@@ -10,11 +10,10 @@ include: []
 
 plugins:
   # 缓存
-  - tag: lazy_cache
+  - tag: cache
     type: cache
     args:
-      size: 2048
-      lazy_cache_ttl: 43200
+      size: 768
 
   - args:
       concurrent: 2
@@ -22,9 +21,11 @@ plugins:
           - addr: https://dns.alidns.com/dns-query
             enable_http3: true
             dial_addr: 2400:3200::1
+            tag: alidns1
           - addr: https://dns.alidns.com/dns-query
             enable_http3: true
             dial_addr: 2400:3200:baba::1
+            tag: alidns2
     tag: fast_forward
     type: forward
       
@@ -35,10 +36,7 @@ plugins:
   - tag: main_sequence
     type: sequence
     args:
-      - exec: $lazy_cache
-      - matches:
-          - has_resp
-        exec: accept
+      - exec: $cache
       - exec: $fast_forward
 
   # 启动 udp 服务器。
