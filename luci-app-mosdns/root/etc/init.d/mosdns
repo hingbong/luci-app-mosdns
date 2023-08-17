@@ -100,34 +100,15 @@ service_triggers() {
 }
 
 restore_setting() {
-    rm -f /etc/mosdns/redirect.lock
-    sed -i "/list server/d" /etc/config/dhcp
-    uci set dhcp.@dnsmasq[0].noresolv='0'
-    uci del dhcp.@dnsmasq[0].cachesize
-    uci commit dhcp
+	echo "restore_setting"
 }
 
 redirect_setting() {
-    if [ "${CONF}" = "/etc/mosdns/config.yaml" ]; then
-        sed -i "/list server/d" /etc/config/dhcp
-        uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$listen_port"
-        uci set dhcp.@dnsmasq[0].rebind_protection='0'
-        uci set dhcp.@dnsmasq[0].noresolv="1"
-        uci set dhcp.@dnsmasq[0].cachesize='0'
-        uci commit dhcp
-    else
-        sed -i "/list server/d" /etc/config/dhcp
-        uci add_list dhcp.@dnsmasq[0].server="127.0.0.1#$(awk -F'[:" ]+' '/^\s+listen:/{for(i=1;i<=NF;i++){if($i~/^[0-9]+$/){print $i;exit}}}' $CONF)"
-        uci set dhcp.@dnsmasq[0].rebind_protection='0'
-        uci set dhcp.@dnsmasq[0].noresolv="1"
-        uci set dhcp.@dnsmasq[0].cachesize='0'
-        uci commit dhcp
-    fi
-    touch /etc/mosdns/redirect.lock
+	echo "redirect_setting"
 }
 
 reload_dnsmasq() {
-    /etc/init.d/dnsmasq reload
+	echo "reload_dnsmasq"
 }
 
 reload_service() {
@@ -161,15 +142,9 @@ start_service() {
     procd_set_param stderr 1
     procd_set_param respawn "${respawn_threshold:-3600}" "${respawn_timeout:-5}" "${respawn_retry:-5}"
     procd_close_instance mosdns
-    [ "$redirect" -ne 1 ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
-    [ "$redirect" -eq 1 ] && redirect_setting
-    reload_dnsmasq
 }
 
 stop_service() {
     config_load "mosdns"
     config_foreach get_config "mosdns"
-    [ "$enabled" -eq "0" ] && [ -f "/etc/mosdns/redirect.lock" ] && restore_setting
-    reload_dnsmasq
-    delcron
 }

@@ -9,12 +9,6 @@ api:
 include: []
 
 plugins:
-  # 缓存
-  - tag: cache
-    type: cache
-    args:
-      size: 768
-
   - args:
       concurrent: 2
       upstreams:
@@ -36,7 +30,6 @@ plugins:
   - tag: main_sequence
     type: sequence
     args:
-      - exec: $cache
       - exec: $fast_forward
 
   # 启动 udp 服务器。
